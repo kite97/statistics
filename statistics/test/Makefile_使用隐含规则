@@ -1,0 +1,18 @@
+CC = gcc
+OBJECTS = main.o wave.o mp3.o amr.o
+CFLAGS = -I include
+objects := $(wildcard *.o)
+vpath %.c src
+
+
+statistics: $(OBJECTS) 
+	$(CC) -o statistics $(OBJECTS)
+
+
+.PHONY: cleanall cleanexe cleanobj err
+cleanall:
+	rm -f statistics $(objects)
+cleanexe:
+	rm -f statistics
+cleanobj:
+	rm -f *.o

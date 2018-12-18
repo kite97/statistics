@@ -1,0 +1,26 @@
+CC = gcc
+OBJECTS = main.o wave.o mp3.o amr.o
+objects := $(wildcard *.o)
+
+
+statistics: $(OBJECTS) 
+	$(CC) -o statistics $(OBJECTS)
+
+
+%.d : %.c
+	@set -e;rm -f $@; \
+	$(CC) -MM $< > $@.$$$$; \
+	sed 's, \($*\)\.o[ :]*, \1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+
+-include $(OBJECTS:.o=.d)
+
+
+.PHONY: cleanall cleanexe cleanobj
+cleanall:
+	rm -f statistics $(objects) *.d
+cleanexe:
+	rm -f statistics
+cleanobj:
+	rm -f *.o *.d
