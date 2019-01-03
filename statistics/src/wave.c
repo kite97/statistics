@@ -68,8 +68,11 @@ int wave_fread_frame(char *buf, int frame_size, FILE *fp) {
     return num;
 }
 
-void display(wave_t* wav){
+void display(wave_t* wav,FILE *fp){
+        int all_byte = 0;
+        int data_byte = 0;
         int length = 0;
+        int compare_length = 0;
         printf("ChunkID \t%c%c%c%c\n", wav->riff.chunk_id[0], wav->riff.chunk_id[1], wav->riff.chunk_id[2], wav->riff.chunk_id[3]);
         printf("ChunkSize \t%d\n", wav->riff.chunk_size);
         printf("Format \t\t%c%c%c%c\n", wav->riff.wave_id[0], wav->riff.wave_id[1], wav->riff.wave_id[2], wav->riff.wave_id[3]);
@@ -86,8 +89,24 @@ void display(wave_t* wav){
             printf("SubchunkTwoID \t%c%c%c%c\n", wav->type.pcm.chunk_id[0], wav->type.pcm.chunk_id[1], wav->type.pcm.chunk_id[2], wav->type.pcm.chunk_id[3]);
             printf("SubchunkTwoSize %d\n", wav->type.pcm.chunk_size);
             length = (int)(wav->type.pcm.chunk_size / wav->fmt.bytes_rate);
-            printf("Length \t\t%d s\n\n\n",length);
             length_wave += length;
+            fseek(fp,0,SEEK_END);
+            all_byte = ftell(fp);
+            data_byte = all_byte - 44;
+            compare_length = (int)(data_byte / wav->fmt.bytes_rate);
+            if(compare_length != length){
+                printf("Length \t\t%d s\n",length);
+            }
+            else{
+                printf("Length \t\t%d s\n\n\n",length);
+            }
+
+            if(compare_length < length){
+                printf("Missing data\n\n\n");
+            }
+            if(compare_length > length){
+                printf("Data redundancy\n\n\n");
+            }
         }
         else{
             printf("CbSize \t\t%d\n", wav->type.law.fact.cb_size);
@@ -97,23 +116,44 @@ void display(wave_t* wav){
             printf("SubchunkTwoID \t%c%c%c%c\n", wav->type.law.data.chunk_id[0], wav->type.law.data.chunk_id[1], wav->type.law.data.chunk_id[2], wav->type.law.data.chunk_id[3]);
             printf("SubchunkTwoSize %d\n", wav->type.law.data.chunk_size);
             length = (int)(wav->type.law.data.chunk_size / wav->fmt.bytes_rate);
-            printf("Length \t\t%d s\n\n\n",length);
             length_wave += length;
+            fseek(fp,0,SEEK_END);
+            all_byte = ftell(fp);
+            data_byte = all_byte - 58;
+            compare_length = (int)(data_byte / wav->fmt.bytes_rate);
+            if(compare_length != length){
+                printf("Length \t\t%d s\n",length);
+            }
+            else{
+                printf("Length \t\t%d s\n\n\n",length);
+            }
+            if(compare_length < length){
+                printf("Missing data\n\n\n");
+            }
+            if(compare_length > length){
+                printf("Data redundancy\n\n\n");
+            }
+
         }
 }
 
 
 void wave(wave_t *wav ,FILE *fp){
     char buf[1024*4];
-    display(wav);
-   /* int frame_size;
-    int ms;
-    ms = 20;
     if (wave_check_chunk(wav)) {
-        wave_parse_chunk(wav, fp, &frame_size,ms);
-    } else {
-        exit(-1);
+        display(wav,fp);
     }
-    int num;*/
+    else{
+    printf("Wave header error\n");
+    }
+    /* int frame_size;
+       int ms;
+       ms = 20;
+       if (wave_check_chunk(wav)) {
+       wave_parse_chunk(wav, fp, &frame_size,ms);
+       } else {
+       exit(-1);
+       }
+       int num;*/
 }
 

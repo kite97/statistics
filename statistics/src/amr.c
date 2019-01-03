@@ -32,20 +32,44 @@ int get_head_size(FILE *fp){                              //获得文件头字节大小
         }
     }
     if (i == 6) {
+        if(!strncasecmp(file_head,"#!AMR\n",6) || !strncasecmp(file_head,"#!amr\n",6)){
         printf("This is AMR-NB Mono\n");
+        }
+        else{
+        printf("The word of header error");
+        exit(-1);
+        }
     }
     else if (i == 9) {
+        if(!strncasecmp(file_head,"#!AMR-WB\n",6) || !strncasecmp(file_head,"#!amr-wb\n",6)){
         printf("This is AMR-WB Mono\n");
+        }
+        else{
+        printf("The word of header error");
+        exit(-1);
+        }
     }
     else if (i == 12) {
         channel_number = file_head[15] & 0xF;
+        if(!strncasecmp(file_head,"#!AMR_MC1.0\n",6) || !strncasecmp(file_head,"#!amr_mc1.0\n",6)){
         printf("This is AMR-NB with %d channels", channel_number);
         i = i + 4;
+        }
+        else{
+        printf("The word of header error");
+        exit(-1);
+        }
     }
     else if (i == 15) {
         channel_number = file_head[18] & 0xF;
+        if(!strncasecmp(file_head,"#!AMR-WB_MC1.0\n",6) || !strncasecmp(file_head,"#!amr-wb_mc1.0\n",6)){
         printf("This is AMR-WB with %d channels", channel_number);
         i = i + 4;
+        }
+        else{
+        printf("The word of header error");
+        exit(-1);
+        }
     }
     else {
         printf("ERROR:This is not a complete arm file");

@@ -14,6 +14,7 @@
 #define MP3 2
 #define AMR 3
 #define OTHER 4
+#define ERROR 5
 
 extern void wave(wave_t* wav, FILE *fp);
 extern void mp3(FILE *fp);
@@ -24,18 +25,70 @@ int length_mp3 = 0;
 int length_amr = 0;
 int length_all = 0;
 int num_soft_link = 0;
-char address[512];
+
+//通配符检测，用于通过文件名检测文件格式
+int match(char *str1, char *str2)
+{
+    if(str1 == NULL || str2 == NULL)
+        return 0 ;
+    int len1 = strlen(str1);
+    int len2 = strlen(str2);
+    char *tmp_str = str2 ;
+    int tmp_len = len2 ;
+    int location = 0 ;
+    int match_flag = 0 ;
+    int i = 0 ;
+    while(i<tmp_len) {
+        if(tmp_str[i] == '*') {
+            location = i+1 ;
+            break ;
+        }
+        i++ ;
+    }
+    char *tmp_str1 = str1 ;
+    char *tmp_str2 = str2 ;
+    if(location) {
+        location -= 1;
+        if(!strncmp(str1, str2, location)) {
+            tmp_len = len2 - location ;
+            tmp_str1 += len1 ;
+            tmp_str2 += len2 ;
+            while(tmp_len && (*tmp_str1 == *tmp_str2)){
+                tmp_str1 -- ;
+                tmp_str2 -- ;
+                tmp_len -- ;
+            }
+            match_flag = tmp_len?0:1 ;
+        }
+    }
+    return match_flag ;
+}
 
 //判断文件类型
-int type_check(wave_t *wav){
-    if (!strncasecmp(wav->riff.wave_id, "wave", 4)){
+int type_check(wave_t *wav, char* file_name){
+    if (match(file_name,"*.wav") || match(file_name,"*.WAV")){
+        if(!strncasecmp(wav->riff.wave_id, "wave", 4)){
         return WAVE;
+        }
+        else{
+        return ERROR;
+        }
     }
-    else if (!strncasecmp((char *)wav, "ID3", 4) || !strncasecmp((char *)wav, "id3", 3 )){
+    else if (match(file_name,"*.mp3") || match(file_name,"*.MP3")){
+        if(!strncasecmp((char *)wav, "ID3", 3) || !strncasecmp((char *)wav, "id3", 3)){
         return MP3;
+        }
+        else{
+        return ERROR;
+        }
     }
-    else if (!strncasecmp((char *)wav, "#!AMR", 5)){
+    else if (match(file_name,"*.amr") || match(file_name,"*.AMR")){
+        if(!strncasecmp((char *)wav, "#!AMR", 5)){
         return AMR;
+        }
+        else{
+        return ERROR;
+        }
     }
     else{
         return OTHER;
@@ -45,9 +98,9 @@ int type_check(wave_t *wav){
 //返回文件夹中的一个文件名（此文件名未返回过）
 char*  do_ls(char dirname[], int* type){
     char* get_name;
-    static char have_name[512];
-    static char have_dir[512];
-    static char have_soft_link[512];
+    static char have_name[128];
+    static char have_dir[128];
+    static char have_soft_link[128];
     DIR *dir_ptr;
     struct dirent *direntp;
     dir_ptr = opendir(dirname);
@@ -104,22 +157,21 @@ char*  do_ls(char dirname[], int* type){
 void ergodic_statistics(char* dirname){
     static char buff[1024];
     char* file_name;
-    char temp_address[512];
-    char new_dirname[512];
+    char temp_file_name[64];
+    char address[128];
     int* type = (int*)malloc(sizeof(int));
-    sprintf(address,"%s",dirname);
     while(file_name = do_ls(dirname ,type)){
+        sprintf(temp_file_name,"%s",file_name);
         if(*type == 4){
-            sprintf(new_dirname,"%s/%s",dirname,file_name);
-            ergodic_statistics(new_dirname);
+            sprintf(address,"%s/%s",dirname,file_name);
+            ergodic_statistics(address);
         }
         else if(*type == 10){
-            sprintf(temp_address,"%s/%s",address,file_name);
-            printf("The address of soft-link %d is %s\n\n",num_soft_link,temp_address);
+            sprintf(address,"%s/%s",dirname,file_name);
+            printf("The address of soft-link %d is %s\n\n",num_soft_link,address);
         }
         else if(*type == 8){
             printf("%s:\n",file_name);
-            char address[64];
             sprintf(address,"%s/%s",dirname,file_name);
             FILE *fp = fopen(address, "rb");
             if(!fp){
@@ -129,7 +181,7 @@ void ergodic_statistics(char* dirname){
             fread(buff, 1, sizeof(buff) , fp);
             wave_t *wav = (wave_t *)&buff[0];
             fseek(fp, 0 , SEEK_SET);
-            int i = type_check(wav);
+            int i = type_check(wav,temp_file_name);
             switch(i)
             {
                 case WAVE:
@@ -142,8 +194,10 @@ void ergodic_statistics(char* dirname){
                     amr(fp);
                     break;
                 case OTHER:
-                    printf("This is an audio file of other types\n");
+                    printf("This is an audio file of other types\n\n\n");
                     break;
+                case ERROR:
+                    printf("The header of %s error\n\n\n",temp_file_name);
             }
         }
     }
