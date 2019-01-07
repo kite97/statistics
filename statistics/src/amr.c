@@ -92,6 +92,9 @@ void amr(FILE *fp) {
     int ft;                                             //FT值，多维数组的列-1
     int q;                                              //Q值
     int length;                                         //长度（多少秒）
+    int p;                                              //帧头第一位
+    int pp;                                             //帧头最后两位
+    int i = 1;
 
     head_size = get_head_size(fp);
     printf("FILE_HEAD_SIZE:\t%d bytes\n", head_size);
@@ -101,8 +104,10 @@ FIND_COMPLETE_FRAME:                                               //找好帧
     fread(frames, 1, sizeof(frame), fp);
     frame_head[0] = frames[0];
     q = (frame_head[0] & 0x4) >> 2;
+    p = (frame_head[0] & 0x80) >> 7;
+    pp = (frame_head[0] & 0x3);
     ft = (frame_head[0]) >> 3;
-    if (q == 1) {                                                     //好帧
+    if (q == 1 && p == 0 && pp == 0) {                                                     //好帧
         if (head_size == 6 || head_size == 16) {                                      //AMR-NB
             row = 1;
             bitrate = get_bitrate(row, ft);
@@ -111,13 +116,16 @@ FIND_COMPLETE_FRAME:                                               //找好帧
             printf("FrameSize:\t%d bytes\n", frame_size);
             complete_frame_number++;
         }
-        else {                                                        //AMR-WB
+        else if (head_size == 9 || head_size == 19) {                                                        //AMR-WB
             row = 2;
             bitrate = get_bitrate(row, ft);
             printf("Bitrate:\t%.2f kbit/s\n", bitrate);
             frame_size = get_frame_size(row, ft);
             printf("FrameSize:\t%d bytes\n", frame_size);
             complete_frame_number++;                                   //好帧数量+1
+        }
+        else {                                                           //坏帧
+            goto FIND_COMPLETE_FRAME;                                    //读下一字节，找到好帧
         }
     }
     else {                                                           //坏帧
@@ -129,10 +137,28 @@ FIND_COMPLETE_FRAME:                                               //找好帧
 RE_FIND_COMPLETE_FRAME:
         fread(frames, 1, sizeof(frame), fp);
         re_frame_head[0] = frames[0];
+        ft = (re_frame_head[0]) >> 3;
+        q = (re_frame_head[0] & 0x4) >> 2;
+        p = (re_frame_head[0] & 0x80) >> 7;
+        pp = (re_frame_head[0] & 0x3);
         if (re_frame_head[0] == frame_head[0]) {                         //好帧
             complete_frame_number++;                                      //好帧数量+1
         }
-        else {                                                           //坏帧
+        else if((ft==0 || ft==1 || ft==2 || ft==3 || ft==4 || ft==5 ||\
+                    ft ==6 || ft==7 || ft==8) && q==1 && p==0 && pp==0){        //采样率模式改变
+            printf("The mode of sampling rate has changed.\n");
+            bitrate = get_bitrate(row, ft);
+            printf("Bitrate:\t%.2f kbit/s\n", bitrate);
+            frame_size = get_frame_size(row, ft);
+            printf("FrameSize:\t%d bytes\n", frame_size);
+            complete_frame_number++;                                   //好帧数量+1
+            frame_head[0] = re_frame_head[0];
+        }
+        else{                                                                 //坏帧
+            while(i){
+            printf("There is a bad frame or the mode of sampling rate error\n");
+            i--;
+            }
             goto RE_FIND_COMPLETE_FRAME;                             //读下一字节，找到好帧
         }
     }

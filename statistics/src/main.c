@@ -82,7 +82,8 @@ int type_check(wave_t *wav, char* file_name){
         return ERROR;
         }
     }
-    else if (match(file_name,"*.amr") || match(file_name,"*.AMR")){
+    else if (match(file_name,"*.amr") || match(file_name,"*.AMR") \
+            || match(file_name,"*.awb") || match(file_name,"*.AWB")){
         if(!strncasecmp((char *)wav, "#!AMR", 5)){
         return AMR;
         }
