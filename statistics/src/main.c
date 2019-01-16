@@ -96,110 +96,67 @@ int type_check(wave_t *wav, char* file_name){
     }
 }
 
-//返回文件夹中的一个文件名（此文件名未返回过）
-char*  do_ls(char dirname[], int* type){
-    char* get_name;
-    static char have_name[128];
-    static char have_dir[128];
-    static char have_soft_link[128];
+//处理一个文件
+void do_file(char* address, char* file_name){
+    char buff[1024];
+    FILE *fp = fopen(address, "rb");
+    if(!fp){
+        printf("can't open audio file\n");
+        exit(-1);
+    }
+    fread(buff, 1, sizeof(buff) , fp);
+    wave_t *wav = (wave_t *)&buff[0];
+    fseek(fp, 0 , SEEK_SET);
+    int i = type_check(wav,file_name);
+    switch(i)
+    {
+        case WAVE:
+            wave(wav,fp);
+            break;
+        case MP3:
+            mp3(fp);
+            break;
+        case AMR:
+            amr(fp);
+            break;
+        case OTHER:
+            printf("This is an audio file of other types\n\n\n");
+            break;
+        case ERROR:
+            printf("The header of %s error\n\n\n",file_name);
+    }
+}
+
+//遍历目录中的音频文件并分析
+void ergodic_statistics(char* dirname){
+    char* file_name = NULL;
+    char address[128];
     DIR *dir_ptr;
     struct dirent *direntp;
     dir_ptr = opendir(dirname);
     if(dir_ptr == NULL){
         printf("Error: can not open %s\n",dirname);
     }
-    else{
-        while(direntp = readdir(dir_ptr)){
-            if(strcmp(direntp->d_name, "..") == 0 || strcmp(direntp->d_name,".") == 0){
-                continue;
-            }
-            else if(direntp->d_type == 4){
-                *type = 4;
-                if(strstr(have_dir,direntp->d_name)){
-                    continue;
-                }
-                else{
-                    strcat(have_dir, direntp->d_name);
-                    get_name = direntp->d_name;
-                    closedir(dir_ptr);
-                    return get_name;
-                }
-            }
-            else if(direntp->d_type == 8){
-                *type = 8;
-                if(strstr(have_name,direntp->d_name)){
-                    continue;
-                }
-                else{
-                    strcat(have_name, direntp->d_name);
-                    get_name = direntp->d_name;
-                    closedir(dir_ptr);
-                    return get_name;
-                }
-            }
-            else if(direntp->d_type == 10){
-                *type = 10;
-                if(strstr(have_soft_link,direntp->d_name)){
-                    continue;
-                }
-                else{
-                    strcat(have_soft_link, direntp->d_name);
-                    num_soft_link++;
-                    get_name = direntp->d_name;
-                    closedir(dir_ptr);
-                    return get_name;
-                }
-            }
+    while( direntp = readdir(dir_ptr) ){
+        if(strcmp(direntp->d_name, "..") == 0 || strcmp(direntp->d_name,".") == 0){
+            continue;
         }
-    }
-}
-
-//遍历目录中的音频文件并分析
-void ergodic_statistics(char* dirname){
-    static char buff[1024];
-    char* file_name;
-    char temp_file_name[64];
-    char address[128];
-    int* type = (int*)malloc(sizeof(int));
-    while(file_name = do_ls(dirname ,type)){
-        sprintf(temp_file_name,"%s",file_name);
-        if(*type == 4){
+        if(direntp->d_type == 4){
+            file_name = direntp->d_name;
             sprintf(address,"%s/%s",dirname,file_name);
             ergodic_statistics(address);
         }
-        else if(*type == 10){
+        else if(direntp->d_type == 10){
+            file_name = direntp->d_name;
+            num_soft_link++;
             sprintf(address,"%s/%s",dirname,file_name);
             printf("The address of soft-link %d is %s\n\n",num_soft_link,address);
         }
-        else if(*type == 8){
+        else if(direntp->d_type == 8){
+            file_name = direntp->d_name;
             printf("%s:\n",file_name);
             sprintf(address,"%s/%s",dirname,file_name);
-            FILE *fp = fopen(address, "rb");
-            if(!fp){
-                printf("can't open audio file\n");
-                exit(-1);
-            }
-            fread(buff, 1, sizeof(buff) , fp);
-            wave_t *wav = (wave_t *)&buff[0];
-            fseek(fp, 0 , SEEK_SET);
-            int i = type_check(wav,temp_file_name);
-            switch(i)
-            {
-                case WAVE:
-                    wave(wav,fp);
-                    break;
-                case MP3:
-                    mp3(fp);
-                    break;
-                case AMR:
-                    amr(fp);
-                    break;
-                case OTHER:
-                    printf("This is an audio file of other types\n\n\n");
-                    break;
-                case ERROR:
-                    printf("The header of %s error\n\n\n",temp_file_name);
-            }
+            do_file(address, file_name);
         }
     }
 }
